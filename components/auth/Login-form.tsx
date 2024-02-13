@@ -4,6 +4,8 @@ import * as z from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 
+import { useState, useTransition } from "react";
+
 import { Input } from "../ui/input";
 import {
   Form,
@@ -18,8 +20,13 @@ import { LoginSchema } from "@/schemas";
 import { Button } from "../ui/button";
 import { FormError } from "../form-errors";
 import { FormSuccess } from "../form-success";
+import { login } from "@/actions/login";
 
 export const LoginForm = () => {
+  const [error, setError] = useState<string | undefined>("");
+  const [success, setSuccess] = useState<string | undefined>("");
+  const [isPending, startTransition] = useTransition();
+
   const form = useForm<z.infer<typeof LoginSchema>>({
     resolver: zodResolver(LoginSchema),
     defaultValues: {
@@ -29,7 +36,16 @@ export const LoginForm = () => {
   });
 
   const onSubmit = (values: z.infer<typeof LoginSchema>) => {
-    console.log(values);
+    // axios.post("/api/auth/login", values); si jamais on utilise une API externe.
+    setError("");
+    setSuccess("");
+
+    startTransition(() => {
+      login(values).then((data) => {
+        setError(data.error);
+        setSuccess(data.success);
+      });
+    });
   };
 
   return (
@@ -50,6 +66,7 @@ export const LoginForm = () => {
                   <FormLabel>Email</FormLabel>
                   <FormControl>
                     <Input
+                      disabled={isPending}
                       {...field}
                       type="email"
                       placeholder="johndoe@gmail.com"
@@ -67,17 +84,22 @@ export const LoginForm = () => {
                 <FormItem>
                   <FormLabel>Mot de passe</FormLabel>
                   <FormControl>
-                    <Input {...field} type="password" placeholder="********" />
+                    <Input
+                      disabled={isPending}
+                      {...field}
+                      type="password"
+                      placeholder="********"
+                    />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
               )}
             />
           </div>
-          {/* <FormError message="Email ou mot de passe incorrect" /> */}
-          <FormSuccess message="Connexion réussie" />
+          <FormError message={error} />
+          <FormSuccess message={success} />
 
-          <Button type="submit" className="w-full">
+          <Button disabled={isPending} type="submit" className="w-full">
             connexion
           </Button>
         </form>
